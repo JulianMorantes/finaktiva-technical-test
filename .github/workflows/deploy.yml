@@ -10,6 +10,7 @@ on:
 
 jobs:
   deploy:
+    name: Deploy Infra
     runs-on: ubuntu-latest
 
     strategy:
@@ -18,66 +19,52 @@ jobs:
           - environment: dev
             region: us-east-2
             tfvars: ../environments/dev.tfvars
-          - environment: stg
-            region: us-east-1
-            tfvars: ../environments/stg.tfvars
-          - environment: prod
-            region: us-west-2
-            tfvars: ../environments/prod.tfvars
+          # - environment: stg
+          #   region: us-east-1
+          #   tfvars: ../environments/stg.tfvars
+          # - environment: prod
+          #   region: us-west-2
+          #   tfvars: ../environments/prod.tfvars
+
+    environment:
+      name: ${{ matrix.environment }}
+      url: https://your-${{ matrix.environment }}-url.com # opcional, cambia si lo necesitas
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ matrix.region }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ matrix.region }}
 
-    - name: Set up Terraform
-      uses: hashicorp/setup-terraform@v2
-      with:
-        terraform_version: '1.4.5'
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.4.5'
 
-    # Solo ejecuta Terraform Init y Terraform Plan en 'dev'
-    - name: Terraform Init
-      run: terraform init
-      working-directory: ./iac
-      if: matrix.environment == 'dev'
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./iac
 
-    - name: Terraform Plan
-      run: terraform plan -var-file=${{ matrix.tfvars }} -out=plan-${{ matrix.environment }}.tfplan -input=false
-      working-directory: ./iac
-      if: matrix.environment == 'dev'
+      - name: Terraform Plan
+        run: terraform plan -var-file=${{ matrix.tfvars }} -out=plan-${{ matrix.environment }}.tfplan -input=false
+        working-directory: ./iac
 
-    # Solo ejecuta Terraform Apply en 'dev'
-    - name: Terraform Apply
-      run: terraform apply -auto-approve plan-${{ matrix.environment }}.tfplan
-      working-directory: ./iac
-      if: matrix.environment == 'dev'
+      - name: Terraform Apply
+        run: terraform apply -auto-approve plan-${{ matrix.environment }}.tfplan
+        working-directory: ./iac
 
-    # Aprobación manual para el ambiente dev
-    - name: Approval for dev deployment
-      if: matrix.environment == 'dev'
-      uses: hmarr/auto-approve-action@v2
-      with:
-        approval: 'true'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Deploy to AWS Fargate
-      run: |
-        if [ "${{ secrets.DEPLOY_STRATEGY }}" == "blue-green" ]; then
-          # Blue-Green Deployment
-          aws ecs update-service --cluster my-cluster --service my-service --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100" --region ${{ matrix.region }}
-        else
-          # Rolling update
-          if [ "${{ matrix.environment }}" == "prod" ]; then
-            aws ecs update-service --cluster my-cluster --service my-service --force-new-deployment --region ${{ matrix.region }}
+      - name: Deploy to AWS Fargate
+        run: |
+          if [ "${{ secrets.DEPLOY_STRATEGY }}" == "blue-green" ]; then
+            aws ecs update-service --cluster my-cluster --service my-service \
+              --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100" \
+              --region ${{ matrix.region }}
           else
             aws ecs update-service --cluster my-cluster --service my-service --region ${{ matrix.region }}
           fi
-        fi
-      working-directory: ./iac
+        working-directory: ./iac
