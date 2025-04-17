@@ -1,0 +1,36 @@
+name: Destroy Terraform Infrastructure
+
+on:
+  workflow_run:
+    workflows: ["Deploy to ECS with Terraform"]
+    types:
+      - completed
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}  # Esto asegura que se ejecute incluso si el flujo anterior falla
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ matrix.region }}  # Usamos la región del matrix (si existe)
+
+      - name: Terraform Init
+        working-directory: ./iac
+        run: terraform init
+
+      - name: Terraform Destroy
+        working-directory: ./iac
+        run: terraform destroy -var-file=../environments/${{ matrix.environment }}.tfvars -auto-approve

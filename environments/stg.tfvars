@@ -1,5 +1,5 @@
 environment      = "stg"
-region         = "us-east-2" # Ohio
+region         = "us-east-1" # Ohio
 cluster_name   = "jm-ecs-cluster-stg"
 
 allowed_ips    = ["0.0.0.0/0"] # permitir acceso público (puedes limitar esto luego)

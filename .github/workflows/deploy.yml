@@ -41,27 +41,31 @@ jobs:
       with:
         terraform_version: '1.4.5'
 
+    # Solo ejecuta Terraform Init y Terraform Plan en 'dev'
     - name: Terraform Init
       run: terraform init
       working-directory: ./iac
+      if: matrix.environment == 'dev'
 
     - name: Terraform Plan
       run: terraform plan -var-file=${{ matrix.tfvars }} -out=plan-${{ matrix.environment }}.tfplan -input=false
       working-directory: ./iac
+      if: matrix.environment == 'dev'
 
+    # Solo ejecuta Terraform Apply en 'dev'
     - name: Terraform Apply
       run: terraform apply -auto-approve plan-${{ matrix.environment }}.tfplan
       working-directory: ./iac
+      if: matrix.environment == 'dev'
 
-    # - name: Pull public Docker image
-    #   run: |
-    #     docker pull public-image/my-app:latest
-    #     docker tag public-image/my-app:latest my-registry/my-app:${{ matrix.environment }}
-
-    # - name: Push Docker image to ECR
-    #   run: |
-    #     aws ecr get-login-password --region ${{ matrix.region }} | docker login --username AWS --password-stdin my-registry
-    #     docker push my-registry/my-app:${{ matrix.environment }}
+    # Aprobación manual para el ambiente dev
+    - name: Approval for dev deployment
+      if: matrix.environment == 'dev'
+      uses: hmarr/auto-approve-action@v2
+      with:
+        approval: 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Deploy to AWS Fargate
       run: |
@@ -76,3 +80,4 @@ jobs:
             aws ecs update-service --cluster my-cluster --service my-service --region ${{ matrix.region }}
           fi
         fi
+      working-directory: ./iac
