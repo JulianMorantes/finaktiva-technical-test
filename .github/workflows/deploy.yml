@@ -60,11 +60,19 @@ jobs:
 
       - name: Deploy to AWS Fargate
         run: |
-          if [ "${{ secrets.DEPLOY_STRATEGY }}" == "blue-green" ]; then
-            aws ecs update-service --cluster my-cluster --service my-service \
+          # Verificar si la variable DEPLOY_STRATEGY está definida y tiene valor
+          if [ -z "${{ secrets.DEPLOY_STRATEGY }}" ]; then
+            echo "DEPLOY_STRATEGY no está definido. Asumir estrategia rolling update."
+            # Asumir que no hay Blue-Green, por lo que usar el nombre del clúster dinámico
+            cluster_name=$(terraform output -raw cluster_name)
+            aws ecs update-service --cluster $cluster_name --service my-service --region ${{ matrix.region }}
+          elif [ "${{ secrets.DEPLOY_STRATEGY }}" == "blue-green" ]; then
+            aws ecs update-service --cluster demo-cluster --service my-service \
               --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100" \
               --region ${{ matrix.region }}
           else
-            aws ecs update-service --cluster my-cluster --service my-service --region ${{ matrix.region }}
+            cluster_name=$(terraform output -raw cluster_name)
+            aws ecs update-service --cluster $cluster_name --service my-service --region ${{ matrix.region }}
           fi
         working-directory: ./iac
+      

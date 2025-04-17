@@ -18,8 +18,26 @@ module "alb" {
   subnets = module.vpc.public_subnet_ids  # Asegúrate de pasar las subredes públicas
 }
 
+module "ecr_app1" {
+  source = "./modules/ecr" # Asumiendo que el ECR está definido en ./modules/ecr
+  name   = "${var.app1_name}-repo"
+  tags = {
+    Environment = var.environment
+    App         = var.app1_name
+  }
+}
+
+module "ecr_app2" {
+  source = "./modules/ecr"
+  name   = "${var.app2_name}-repo"
+  tags = {
+    Environment = var.environment
+    App         = var.app2_name
+  }
+}
+
 module "ecs" {
-  source = "./modules/ecs"
+  source = "./modules/ecs" # Asumiendo que el ECR está definido en ./modules/ecr
   cluster_name           = "demo-cluster"  # Nombre del ECS cluster
   app1_image             = var.app1_image_url
   app2_image             = var.app2_image_url

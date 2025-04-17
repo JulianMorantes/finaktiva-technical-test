@@ -92,6 +92,59 @@ Verifica el archivo `.tfvars` para el entorno deseado dentro de `environments/`.
 
 ---
 
+# Ejecución Manual de Terraform
+### Requisitos Previos
+Antes de ejecutar Terraform desde tu máquina local, asegúrate de tener las siguientes herramientas instaladas:
+
+1. Terraform CLI
+Infraestructura como código para aprovisionar recursos en la nube.
+Descargar desde: Terraform Downloads
+Comando para verificar instalación:
+
+`terraform -v`
+
+2. AWS CLI
+Herramienta oficial para autenticación y gestión de recursos en AWS.
+Descargar desde: AWS CLI Installation
+Comando para verificar instalación:
+
+`aws --version`
+
+3. Configurar credenciales de AWS
+Autentícate con tus credenciales de AWS ejecutando el siguiente comando:
+
+`aws configure`
+
+Esto solicitará los siguientes datos:
+`AWS Access Key ID`
+`AWS Secret Access Key`
+`Default region name (ejemplo: us-east-1)`
+`Default output format (opcional, ejemplo: json)`
+
+Comandos para Ejecutar Terraform
+Sigue los pasos a continuación para ejecutar Terraform manualmente desde tu terminal.
+
+1. Inicializar el proyecto
+Desde la carpeta iac/, ejecuta:
+`cd iac`
+`terraform init`
+
+2. Verificar el plan de despliegue
+Genera el plan de despliegue para tu entorno (por ejemplo, dev, stg, prod):
+
+`terraform plan -var-file=../environments/dev.tfvars`
+3. Aplicar la infraestructura
+Para aplicar los cambios y desplegar la infraestructura:
+
+`terraform apply -var-file=../environments/dev.tfvars`
+Se te pedirá confirmar la acción escribiendo "yes".
+
+4. Destruir la infraestructura (opcional)
+Si necesitas destruir la infraestructura creada:
+
+`terraform destroy -var-file=../environments/dev.tfvars`
+---
+
 ## 🤝 Contribuciones
 
 1. Haz un fork del repositorio.
@@ -103,3 +156,5 @@ Verifica el archivo `.tfvars` para el entorno deseado dentro de `environments/`.
 ## 📄 Licencia
 
 Este proyecto está bajo la licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+
+

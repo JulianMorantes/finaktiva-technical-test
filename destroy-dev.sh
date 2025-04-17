@@ -1,6 +1,6 @@
 #!/bin/bash
 
-REGION="us-west-2"
+REGION="us-east-2"
 CLUSTER_NAME="demo-cluster"  # cambia si lo nombraste distinto
 
 echo "🚨 Destruyendo entorno 'dev' en región $REGION 🚨"
