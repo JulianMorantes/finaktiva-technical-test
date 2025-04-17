@@ -1,38 +1,72 @@
-name: Terraform Deploy
+name: CI/CD Pipeline
 
 on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Ambiente a desplegar (dev, stg, prod)'
-        required: true
-        default: 'dev'
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: iac
+    env:
+      AWS_REGION_DEV: us-east-1  # Virginia
+      AWS_REGION_STG: us-east-2  # Ohio
+      AWS_REGION_PROD: us-west-2 # Oregón
+
+    strategy:
+      matrix:
+        environment: [dev, stg, prod]
+        region: [us-east-1, us-east-2, us-west-2]
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.6.6
+    - name: Set up AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws_region: ${{ matrix.region }}
 
-      - name: Terraform Init
-        run: terraform init
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: '1.4.5'
 
-      - name: Terraform Validate
-        run: terraform validate
+    - name: Terraform Init
+      run: terraform init
 
-      - name: Terraform Plan
-        run: terraform plan -var-file="../environments/${{ github.event.inputs.environment }}.tfvars"
+    - name: Terraform Plan
+      run: terraform plan -out=plan.tfplan
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve -var-file="../environments/${{ github.event.inputs.environment }}.tfvars"
+    - name: Terraform Apply
+      run: terraform apply -auto-approve plan.tfplan
+
+    - name: Pull public Docker image
+      run: |
+        docker pull public-image/my-app:latest
+        docker tag public-image/my-app:latest my-registry/my-app:${{ matrix.environment }}
+
+    - name: Push Docker image to ECR
+      run: |
+        aws ecr get-login-password --region ${{ matrix.region }} | docker login --username AWS --password-stdin my-registry
+        docker push my-registry/my-app:${{ matrix.environment }}
+
+    - name: Deploy to AWS Fargate
+      run: |
+        if [ "${{ secrets.DEPLOY_STRATEGY }}" == "blue-green" ]; then
+          # Blue-Green Deployment
+          aws ecs update-service --cluster my-cluster --service my-service --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100" --region ${{ matrix.region }}
+        else
+          # Rolling update
+          if [ "${{ matrix.environment }}" == "prod" ]; then
+            aws ecs update-service --cluster my-cluster --service my-service --force-new-deployment --region ${{ matrix.region }}
+          else
+            aws ecs update-service --cluster my-cluster --service my-service --region ${{ matrix.region }}
+          fi
+        fi
