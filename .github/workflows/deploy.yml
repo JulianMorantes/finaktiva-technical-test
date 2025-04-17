@@ -12,15 +12,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    env:
-      AWS_REGION_DEV: us-east-1  # Virginia
-      AWS_REGION_STG: us-east-2  # Ohio
-      AWS_REGION_PROD: us-west-2 # Oregón
-
     strategy:
       matrix:
-        environment: [dev, stg, prod]
-        region: [us-east-1, us-east-2, us-west-2]
+        include:
+          - environment: dev
+            tfvars: ./environments/dev.tfvars
+          - environment: stg
+            tfvars: ./environments/stg.tfvars
+          - environment: prod
+            tfvars: ./environments/prod.tfvars
 
     steps:
     - name: Checkout code
@@ -43,22 +43,22 @@ jobs:
       working-directory: ./iac
 
     - name: Terraform Plan
-      run: terraform plan -out=plan.tfplan
+      run: terraform plan -var-file=${{ matrix.tfvars }} -out=plan-${{ matrix.environment }}.tfplan -input=false
       working-directory: ./iac
 
     - name: Terraform Apply
-      run: terraform apply -auto-approve plan.tfplan
+      run: terraform apply -auto-approve plan-${{ matrix.environment }}.tfplan
       working-directory: ./iac
 
-    - name: Pull public Docker image
-      run: |
-        docker pull public-image/my-app:latest
-        docker tag public-image/my-app:latest my-registry/my-app:${{ matrix.environment }}
+    # - name: Pull public Docker image
+    #   run: |
+    #     docker pull public-image/my-app:latest
+    #     docker tag public-image/my-app:latest my-registry/my-app:${{ matrix.environment }}
 
-    - name: Push Docker image to ECR
-      run: |
-        aws ecr get-login-password --region ${{ matrix.region }} | docker login --username AWS --password-stdin my-registry
-        docker push my-registry/my-app:${{ matrix.environment }}
+    # - name: Push Docker image to ECR
+    #   run: |
+    #     aws ecr get-login-password --region ${{ matrix.region }} | docker login --username AWS --password-stdin my-registry
+    #     docker push my-registry/my-app:${{ matrix.environment }}
 
     - name: Deploy to AWS Fargate
       run: |
