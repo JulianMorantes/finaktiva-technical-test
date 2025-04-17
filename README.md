@@ -1,6 +1,9 @@
 # finaktiva-technical-test
 Prueba tecnica Julian Morantes
 
+## 📁 Estructura del Proyecto
+
+```text
 📦 Proyecto
 ├── 📁 .github
 │   └── 📁 workflows
