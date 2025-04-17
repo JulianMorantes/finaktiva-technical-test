@@ -11,15 +11,18 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    
     strategy:
       matrix:
         include:
           - environment: dev
+            region: us-east-2
             tfvars: ./environments/dev.tfvars
           - environment: stg
+            region: us-east-1
             tfvars: ./environments/stg.tfvars
           - environment: prod
+            region: us-west-2
             tfvars: ./environments/prod.tfvars
 
     steps:
